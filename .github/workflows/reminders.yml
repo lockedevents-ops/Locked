@@ -1,0 +1,15 @@
+name: hourly-reminders
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Run at the top of every hour
+  workflow_dispatch: # Allow manual triggering for testing
+
+jobs:
+  trigger-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Reminders API
+        run: |
+          curl -X GET "${{ secrets.SITE_URL }}/api/cron/reminders" \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

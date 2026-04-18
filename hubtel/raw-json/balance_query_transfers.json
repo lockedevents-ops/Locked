@@ -1,0 +1,316 @@
+Balance Query & Transfers
+Last updated December 23rd, 2025
+
+Overview
+The Hubtel Balance Query API allows you to check the balances of both POS Sales and Prepaid Deposit accounts associated with your Hubtel Merchant Account.
+
+The Hubtel Balance Query API facilitates the transfer of funds from your POS Sales account to your Prepaid Deposit account within your Hubtel Merchant Account.
+
+You can find your POS SALES and PREPAID DEPOSIT IDs here.
+
+
+Getting Started
+
+Business IP Whitelisting
+You must share your public IP address with your Retail System Engineer for whitelisting.
+
+bulb-icon
+Note
+All API Endpoints are live and only requests from whitelisted IP(s) can reach the endpoints shared in this reference.
+
+API Reference
+The Hubtel Balance Query And Transfer API focuses on:
+
+Balance Query
+Balance Transfer
+
+Balance Query
+
+POS Sales Balance Query
+This endpoint can be used to query the balance of your POS Sales account.
+
+To initiate a request, send an HTTP GET request to the below URL with the required parameters. Passing your Hubtel POS Sales ID in the endpoint is mandatory. Find your POS Sales ID here.
+
+API Endpoint	https://trnf.hubtel.com/api/inter-transfers/{POS_SALES_ID}
+Request Type	GET
+Content Type	JSON
+
+REQUEST PARAMETERS
+Parameter	Type	Requirement	Description
+POS_SALES_ID	Number	Mandatory	The merchant's Hubtel POS Sales ID. Find yours here.
+
+SAMPLE POS SALES BALANCE QUERY REQUEST
+HTTP
+
+copy
+Copy
+  GET api/inter-transfers/11684 HTTP/1.1
+  Host: trnf.hubtel.com
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Basic endjeOBiZa250fT3=
+  Cache-Control: no-cache
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+responseCode	String	The unique response code on the status of the request
+message	String	The status of the request
+data	Object	An object containing the required data response from the POS Sales Balance Query API.
+amount	Float	The balance of the account queried
+
+SAMPLE SERVER RESPONSE
+200 OK
+
+copy
+Copy
+  {
+    "responseCode": "0000",
+    "message": "Success",
+    "data": {
+        "amount": 123.50
+    }
+  }
+
+Prepaid Deposit Balance Query
+This endpoint can be used to query the balance of your Prepaid Deposit account.
+
+To initiate a request, send an HTTP GET request to the below URL with the required parameters. Passing your Hubtel Prepaid Deposit ID in the endpoint is mandatory. Find your Prepaid Deposit ID here.
+
+API Endpoint	https://trnf.hubtel.com/api/inter-transfers/prepaid/{PREPAID_DEPOSIT_ID}
+Request Type	GET
+Content Type	JSON
+
+REQUEST PARAMETERS
+Parameter	Type	Requirement	Description
+PREPAID_DEPOSIT_ID	Number	Mandatory	The merchant's Hubtel Prepaid Deposit ID. Find yours here.
+
+SAMPLE PREPAID DEPOSIT BALANCE QUERY REQUEST
+HTTP
+
+copy
+Copy
+  GET api/inter-transfers/prepaid/11691 HTTP/1.1
+  Host: trnf.hubtel.com
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Basic endjeOBiZa250fT3=
+  Cache-Control: no-cache
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+responseCode	String	The unique response code on the status of the request
+message	String	The status of the request
+data	Object	An object containing the required data response from the Prepaid Deposit Balance Query API.
+amount	Float	The balance of the account queried
+
+SAMPLE SERVER RESPONSE
+200 OK
+
+copy
+Copy
+  {
+    "responseCode": "0000",
+    "message": "Success",
+    "data": {
+        "amount": 11.50
+    }
+  }
+
+Balance Transfer
+This endpoint allows you to transfer funds from your POS Sales account to your Prepaid Deposit account within your Hubtel Merchant Account. To initiate a Balance Transfer request, send an HTTP POST request to the below URL with the required parameters. Passing your POS Sales ID in the endpoint is also mandatory. Find your POS Sales ID here.
+
+
+API Endpoint	https://trnf.hubtel.com/api/inter-transfers/{POS_SALES_ID}
+Request Type	POST
+Content Type	JSON
+
+REQUEST PARAMETERS
+Parameter	Type	Requirement	Description
+POS_SALES_ID	Float	Mandatory	The merchant's Hubtel POS Sales ID. Find yours here.
+Description	String	Mandatory	A brief desciption of the transaction
+Amount	Float	Mandatory	The amount to be sent from the account specified e.g. 0.50
+ClientReference	String	Mandatory	The reference provided by the API user, and must be unique and preferably be alphanumeric characters. Maximum length is 36 characters
+DestinationAccountNumber	String	Mandatory	The account you are transferring to, i.e., the Prepaid Deposit ID. Find yours here.
+PrimaryCallbackUrl	String	Mandatory	URL used to receive callback payload of Balance Transfer transactions from Hubtel.
+
+SAMPLE BALANCE TRANSFER REQUEST
+HTTP
+
+copy
+Copy
+  GET api/inter-transfers/11684 HTTP/1.1
+  Host: trnf.hubtel.com
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Basic endjeOBiZa250fT3=
+  Cache-Control: no-cache
+
+  {
+    "Description": "Hubtel Transfer Test", 
+    "Amount": 0.8,
+    "ClientReference": "bd0io3202ef49", 
+    "DestinationAccountNumber": "11691",
+    "PrimaryCallbackUrl": "https://webhook.site/b513d1a9-e7826-a6ede",
+  }
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+responseCode	String	The unique response code on the status of the request
+message	String	The status of the request
+data	Object	An object containing the required data response from the Hubtel Balance Transefer API.
+clientReference	String	The reference provided by the API user
+amount	Float	The amount sent from the account specified
+charges	Float	The amount charged. There is no charge. It is free
+meta	String	This is usually null
+recipientName	String	The name on the merchant account
+
+SAMPLE SERVER RESPONSE
+200 OK
+
+copy
+Copy
+{ 
+  "responseCode": "0001", 
+  "message": "Pending", 
+  "data": {
+    "clientReference": "bd0i03202ef49",
+    "description": "Your request has been accepted. We'll notify you when the transaction is completed.",
+    "amount": 0.8, 
+    "charges": 0, 
+    "meta": null,
+    "recipientName": "gershon" 
+  }
+}
+
+Transfer Callback
+The Hubtel Balance Transfer API mandatorily sends a payload to callbackURL provided in each request. The callback payload determines final status of a pending transaction response i.e. transaction with 0000 ResponseCode. The callback URL you specified in the Balance Transfer request should be implemented to listen for a HTTP POST payload from Hubtel. Hubtel Balance Transfer has an asynchronous flow.
+
+This means that the final status of a transaction cannot be determined immediately after a request. It may take some time (usually less than 30 seconds). Hence, it is paramount and required to implement an HTTP callback on your server to be able to receive the final status of each transaction.
+
+
+SAMPLE BALANCE TRANSFER CALLBACK
+200 OK
+
+copy
+Copy
+{
+  "ResponseCode": "0000", 
+  "Message": "Success", 
+  "Data": { 
+      "ClientReference": "b03202ef49", 
+      "Description": "Hubtel Transfer Test", 
+      "Amount": 0.8,
+      "Charges": null, 
+      "Meta": null,
+      "RecipientName": "gershon", 
+  }
+}
+
+Transfer Status Check
+It is mandatory to implement the Balance Transfer Status Check API as it allows merchants to check for the status of a balance transfer in rare instances where a merchant does not receive the final status of the transfer from Hubtel after five (5) minutes.
+
+To check the status of a transfer, send an HTTP GET request to the below URL, with either one or more unique transaction identifiers as parameters.
+
+It is also mandatory to pass your POS Sales ID for Status Check requests in the endpoint. Find your POS Sales ID here.
+
+
+API Endpoint	https://trnf.hubtel.com/api/inter-transfers/status/{POS_Sales_ID}?clientReference=xxxxxxxxx
+Request Type	GET
+Content Type	JSON
+
+REQUEST PARAMETERS
+Parameter	Type	Requirement	Description
+clientReference	String	Mandatory	The client reference of the transaction specified in the request payload.
+
+SAMPLE REQUEST
+HTTP
+
+copy
+Copy
+GET /api/inter-transfers/status/11684?clientReference=76576343905406557 HTTP/1.1
+Host: trnf.hubtel.com
+Authorization: Basic QmdfaWjkjJhc2U29lbmNvmkGUoa2hzcW9seXU6bXVhaHdpYW8pfQ==
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+message	String	The description of response received from the API that is related to the ResponseCode.
+responseCode	String	The response code of the API after the request.
+data	Object	An object containing the required data response from the API.
+id	String	The unique ID used to identify a Hubtel transaction (from Hubtel).
+createdAt	String	Date of the transaction.
+updatedAt	String	Date the transaction was updated. Default value: null.
+transferDescription	String	The initial description passed.
+transferAmount	Float	Amount transferred.
+clientReference	String	The reference ID that is initially provided by the client/API user in the request payload (from merchant).
+callbackUrl	String	The initial callbackUrl passed.
+fromAccountType	String	The originating account for the transfer.
+fromAccountId	String	The account number of the origination account i.e.: POS Sales ID
+toAccountType	String	The destination account for the transfer.
+toAccountId	String	The account number of the destination account i.e.: Prepaid Deposit ID
+fromBusinessId	String	The business ID of the merchant.
+toBusinessId	String	The business ID of the merchant.
+status	String	Status of the transaction i.e.: success or failed.
+failureReason	String	Reason for the transfer failure; could be null.
+
+SAMPLE RESPONSE (Successful)
+200 OK
+
+copy
+Copy
+{
+  "message": "success",
+  "code": "200",
+  "data": {
+      "id": "bfe03a54f40e4f91ae8d1977f2250d39",
+      "createdAt": "2024-07-03T16:48:49.1073714+00:00",
+      "updatedAt": null,
+      "transferDescription": "InterFineractTransfer",
+      "transferAmount": 1.0,
+      "clientReference": "76576343905406557",
+      "callbackUrl": "https://webhook.site/3ae16425-b322-4e8e-ab52-c97bcd3c9ec1",
+      "fromAccountType": "receivemoney",
+      "fromAccountId": "11684",
+      "toAccountType": "sendmoney",
+      "toAccountId": "11691",
+      "fromBusinessId": "gershon",
+      "toBusinessId": "gershon",
+      "status": "success",
+      "failureReason": null
+  }
+}
+SAMPLE RESPONSE (Failed)
+200 OK
+
+copy
+Copy
+{
+  "message": "success",
+  "code": "200",
+  "data": {
+      "id": "6f1a85eaf32149438d14e7d49ad8d69c",
+      "createdAt": "2024-07-03T16:52:58.196586+00:00",
+      "updatedAt": null,
+      "transferDescription": "InterFineractTransfer",
+      "transferAmount": 1000.0,
+      "clientReference": "926943563465346376",
+      "callbackUrl": "https://webhook.site/3ae16425-b322-4e8e-ab52-c97bcd3c9ec1",
+      "fromAccountType": "receivemoney",
+      "fromAccountId": "11684",
+      "toAccountType": "sendmoney",
+      "toAccountId": "11691",
+      "fromBusinessId": "gershon",
+      "toBusinessId": "gershon",
+      "status": "failed",
+      "failureReason": "Low balance"
+  }
+}
+
+Response Codes
+The Hubtel Balance Query and Transfer API uses standard HTTP error reporting. Successful requests return HTTP status codes in the 2xx. Failed requests return status codes in 4xx and 5xx.
+
+Response Codes are included in the JSON response body, which contains information about the error or status
+
+HTTP Status Code	ResponseCode	Description	Required Action
+200	0000/ 0001	The request has been processed successfully	None
+401		None	Pass the correct account number in the request. Ensure your API keys are valid.
+400	4000	Prepaid Deposit ID is invalid for this transaction./Provided client reference already exists. Please check and try again.	Ensure you are passing the correct Prepaid Deposit ID/ Ensure ClientReference is unique.

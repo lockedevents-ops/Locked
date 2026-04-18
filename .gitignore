@@ -1,0 +1,80 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# =====================
+# Dependency directories
+# =====================
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# =====================
+# Build & output
+# =====================
+.next/
+out/
+build/
+
+# =====================
+# Test & coverage
+# =====================
+coverage/
+
+# =====================
+# Environment & config
+# =====================
+.env*
+*.tsbuildinfo
+next-env.d.ts
+
+# =====================
+# Google Cloud & API Keys
+# =====================
+*-key.json
+google-*.json
+service-account*.json
+.gcloud/
+*.p12
+
+# =====================
+# Logs & debug
+# =====================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# =====================
+# Miscellaneous
+# =====================
+.DS_Store
+*.pem
+
+# =====================
+# Platform/host specific
+# =====================
+.vercel/
+
+# =====================
+# Project-specific: docs, screenshots, backups
+# =====================
+shots/
+bak/
+#docs/
+
+# =====================
+# App-specific: management portal (do not push)
+# =====================
+src/app/management-portal/
+
+# (legacy, root-level management-portal folder)
+management-portal/
+.vscode
+
+# .github
+
+email.html

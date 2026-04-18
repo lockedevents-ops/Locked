@@ -1,0 +1,67 @@
+
+// ... (previous content)
+  /**
+   * Get all homepage events in a single optimized call
+   * Uses memory caching to serve subsequent requests instantly
+   */
+  async getHomepageEvents(userId?: string, supabaseClient?: any): Promise<HomepageEventData> {
+    // Check cache first
+    const cached = this.getCachedHomepageEvents(userId);
+    if (cached) {
+      return cached;
+    }
+
+    // Reuse existing promise if a fetch is already in progress for this user
+    const cacheKey = `homepage-${userId || 'anon'}`;
+    if (this.pendingRequests.has(cacheKey)) {
+      return this.pendingRequests.get(cacheKey);
+    }
+
+    const requestPromise = (async () => {
+      try {
+        // Fetch all data in parallel
+        const [
+          featuredEvents,
+          trendingEvents,
+          liveEvents,
+          upcomingEvents
+        ] = await Promise.all([
+          this.getFeaturedEvents(4, supabaseClient),
+          this.getTrendingEvents(8, undefined, supabaseClient),
+          this.getLiveEvents(8, undefined, supabaseClient),
+          this.getUpcomingEvents(8, undefined, 'all', supabaseClient)
+        ]);
+
+        const excludedIds = new Set([
+          ...featuredEvents.map(e => e.id),
+          ...trendingEvents.map(e => e.id),
+          ...liveEvents.map(e => e.id),
+          ...upcomingEvents.map(e => e.id)
+        ]);
+        
+        // Populate "Recommended" with whatever is left (could use personalized logic here)
+        // For now, reuse trending logic but filter out what we already showed
+        const recommendedEvents = await this.getTrendingEvents(12, excludedIds, supabaseClient);
+
+        const data: HomepageEventData = {
+          featuredEvents,
+          trendingEvents,
+          recommendedEvents,
+          liveEvents,
+          upcomingEvents
+        };
+
+        this.cacheHomepageEvents(userId, data);
+        return data;
+      } catch (error) {
+        console.error('SharedEventService: Error fetching homepage events', error);
+        throw error;
+      } finally {
+        this.pendingRequests.delete(cacheKey);
+      }
+    })();
+
+    this.pendingRequests.set(cacheKey, requestPromise);
+    return requestPromise;
+  }
+// ...

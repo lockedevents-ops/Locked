@@ -1,0 +1,674 @@
+Invoicing
+Last updated December 23rd, 2025
+
+Overview
+The Invoicing API enables merchants to generate invoices and receive payments from customers through one-time payments, installment plans, and auto debits (MTN and Telecel only) using:
+
+Mobile Money
+Bank Card
+Wallet (G-Money)
+Cash / Cheque
+
+Invoicing
+
+Invoicing
+
+Invoicing
+
+With a single integration, you can accept one-time, installment, and automated debit payments on your application. Provide the customer's debit details and Hubtel will manage the scheduling and processing of payments.
+
+The following provides an overview of the REST API endpoints for interacting programmatically with the Hubtel Invoicing API within your application.
+
+
+
+Getting Started
+
+Understanding the Service Flow
+The Hubtel Invoicing API includes three main API endpoints which can be used to create an invoice. They are:
+
+Pay At Once: This endpoint allows you to create an invoice for your customer to make a full one-time payment. Available payment channels include mobile money, debit/credit card and G-Money.
+Pay In Installments: This endpoint allows you to create an invoice for your customer to make payment for the total amount, either in full or through partial payments.
+Auto Debit: This endpoint allows you to create an invoice for your customer to make payment for the total amount, in smaller automated payments until the specified due date.
+
+
+API Reference
+
+Pay at Once
+To initiate a Pay at Once request, send an HTTP POST request to the below URL with the required parameters. It’s also mandatory to pass your Hubtel POS Sales ID for Create Invoice requests in the endpoint. Find your POS Sales ID here.
+
+
+API Endpoint	https://invoicing.hubtel.com/api/invoice/{POS_SALES_ID}/pay-at-once
+Request Type	POST
+Content Type	JSON
+
+REQUEST PARAMETERS
+Parameter	Type	Requirement	Description
+invoiceNumber	String	Mandatory	The invoice number associated with the invoice. It must not be empty and should be a maximum of 20 characters in length.
+customerName	String	Mandatory	The name of the customer.
+callbackUrl	String	Mandatory	The callback URL expected to receive the final status of the payment.
+customerPhoneNumber	String	Mandatory	The phone number of the customer. Customer will receive invoice via this number.
+customerEmail	String	Optional	This refers to the email of the customer. Customer will receive invoice via this email.
+hasTax	Boolean	Optional	This indicates whether tax will be added to the invoice.
+IssuedBy	String	Mandatory	This refers to the person or staff creating the invoice.
+createdBy	String	Mandatory	This refers to the person or staff creating the invoice.
+dueDate	DateTime	Mandatory	This refers to the due date for payment.
+note	String	Optional	This is a brief description about the invoice.
+reminders	ArrayOfObjects	Mandatory	This helps send reminders to customers about making payment for the invoice created.
+isBefore	Boolean	Mandatory	This indicates whether reminders should be sent before or after the due date.
+days	Integer	Mandatory	This indicates the frequency at which the reminders should be sent.
+items	ArrayOfObjects	Mandatory	This helps schedule the one-time payment.
+description	String	Mandatory	A brief description of the payment being made.
+quantity	String	Mandatory	The quantity of the items being purchased
+unitPrice	Float	Mandatory	The cost for the item being purchased.
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+message	String	A brief message indicating the success or failure of the invoice creation.
+code	Number	The status code
+Data	ArrayOfObject	An object containing the required data response from the Invoicing API.
+InvoiceId	String	A unique identifier for the generated invoice
+paymentUrl	String	Payments can be made via this URL.
+
+SAMPLE REQUEST
+HTTP
+
+copy
+Copy
+POST /api/invoice/11684/pay-at-once HTTP/1.1 
+Host: invoicing.hubtel.com 
+Accept: application/json
+Content-Type: application/json
+Authorization: Basic endjeOBiZHhza24=
+Cache-Control: no-cache
+
+{
+  "invoiceNumber": "test23",
+  "customerName": "John",
+  "customerPhoneNumber": "024000000",
+  "customerEmail": "rse@gmail.com",
+  "hasTax": true,
+  "issuedBy": "John",
+  "createdBy": "John",
+  "dueDate": "2025-03-18T11:20:23.147Z",
+  "isDefault": true,
+  "callbackUrl": "https://webhook.site/40b08e13-05f2-4892-8709-fe379878e6be",
+  "note": "Pay at Once",
+  "reminders": [
+      {
+          "days": 5,
+          "isBefore": true
+      }
+  ],
+  "items": [
+      {
+          "description": "Test Invoice",
+          "quantity": 1,
+          "unitPrice": 0.01
+      }
+  ]
+}
+
+SAMPLE RESPONSE
+200 OK
+
+copy
+Copy
+{
+  "message": "Invoice Created Successfully",
+  "code": 200,
+  "data": {
+      "invoiceId": "hA344ftcBZ",
+      "paymentUrl": "https://invdebit.com/hA344ftcBZ"
+      }
+}
+
+
+Callback
+You will need to implement a callback endpoint on your server to receive payment and order notification statuses.
+
+SAMPLE CALLBACK (successful)
+JSON
+
+copy
+Copy
+{
+  "Status": "Successful",
+  "ResponseCode": "0000",
+  "Data": {
+      "AmountPaid": 150.75,
+      "InvoiceId": "INV-123456",
+      "ReceiptNumber": "RCPT-987654",
+      "Description": "Payment for services rendered",
+      "PaymentMethod": "Credit Card",
+      "PaymentChannel": "Online",
+      "PayeePhoneNumber": "+233555123456"
+  }
+}
+
+SAMPLE CALLBACK (failed)
+JSON
+
+copy
+Copy
+{
+  "Status": "Failed",
+  "ResponseCode": "0001",
+  "Data": {
+      "AmountPaid": 0.00,
+      "InvoiceId": "INV-789012",
+      "ReceiptNumber": "",
+      "Description": "Payment attempt failed",
+      "PaymentMethod": "Mobile Money",
+      "PaymentChannel": "USSD",
+      "PayeePhoneNumber": "+233555654321"
+  }
+}
+
+
+Pay in Installments
+To initiate a Pay in Installments request, send an HTTP POST request to the below URL with the required parameters. It’s also mandatory to pass your Hubtel POS Sales ID in the endpoint. Find your POS Sales ID here.
+
+
+API Endpoint	https://invoicing.hubtel.com/api/invoice/{POS_SALES_ID}/pay-in-installments
+Request Type	POST
+Content Type	JSON
+
+REQUEST PARAMETERS
+Parameter	Type	Requirement	Description
+invoiceNumber	String	Mandatory	The invoice number associated with the created invoice. It must not be empty and should be a maximum of 20 characters in length.
+customerName	String	Mandatory	The name of the customer for whom this invoice is being created.
+callbackUrl	String	Mandatory	The callback URL expected to receive the final status of the payment.
+customerPhoneNumber	String	Mandatory	The phone number of the customer. Customer will receive invoice via this number.
+customerEmail	String	Optional	This refers to the email of the customer. Customer will receive invoice via this email.
+hasTax	Boolean	Optional	This indicates whether tax will be added to the invoice.
+IssuedBy	String	Mandatory	This refers to the person or staff creating the invoice.
+createdBy	String	Mandatory	This refers to the person or staff creating the invoice.
+dueDate	DateTime	Mandatory	This refers to the date due for payment.
+isDefault	Boolean	Optional	This helps to indicate whether an invoice is a draft invoice or not.
+note	String	Optional	This is a brief description about the invoice.
+reminders	ArrayOfObjects	Optional	This helps send reminders to customers about making payment for the invoice created.
+isBefore	Boolean	Mandatory	This indicates whether reminders should be sent before or after the due date.
+days	Integer	Mandatory	This indicates the frequency at which the reminders should be sent.
+items	ArrayOfObjects	Mandatory	This helps schedule the one-time payment.
+description	String	Mandatory	A brief description of the payment being made.
+quantity	String	Mandatory	The quantity of the items being purchased
+unitPrice	Float	Mandatory	The cost for the item being purchased.
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+status	String	The description of response received from the Receive Money API that is related to the ResponseCode.
+Data	Object	An object containing the required data response from the Invoice API.
+InvoiceId	String	An invoice id generated and it is tied to the invoice
+paymentUrl	String	A payee can make payment on the same page the request was made from with this URL.
+message	String	A payee can make payment on the same page the request was made from with this URL.
+
+SAMPLE REQUEST
+HTTP
+
+copy
+Copy
+POST /api/invoice/11684/pay-in-installments HTTP/1.1 
+Host: invoicing.hubtel.com 
+Accept: application/json
+Content-Type: application/json
+Authorization: Basic endjeOBiZHhza24=
+Cache-Control: no-cache
+
+{
+  "invoiceNumber": "test443",
+  "customerName": "John",
+  "customerPhoneNumber": "0240000000",
+  "customerEmail": "rse@gmail.com",
+  "hasTax": false,
+  "issuedBy": "Jon",
+  "createdBy": "Jon",
+  "dueDate": "2025-03-18T08:00:23.147Z",
+  "isDefault": true,
+  "callbackUrl": "https://webhook.site/40b08e13-05f2-4892-8709-fe379878e6be",
+  "note": "Pay in Installments",
+  "reminders": [
+      {
+          "days": 5,
+          "isBefore": true
+      }
+  ],
+  "items": [
+      {
+          "description": "Test Invoice",
+          "quantity": 1,
+          "unitPrice": 0.10
+      }
+  ]
+}
+
+SAMPLE RESPONSE
+200 OK
+
+copy
+Copy
+{
+  "message": "Invoice Created Successfully",
+  "code": 200,
+  "data": {
+      "invoiceId": "hA344ftcBZ",
+      "paymentUrl": "https://invdebit.com/hA344ftcBZ"
+      }
+}
+
+
+Callback
+You will need to implement a callback endpoint on your server to receive payment and order notification statuses.
+
+SAMPLE CALLBACK (successful)
+JSON
+
+copy
+Copy
+{
+  "Status": "Successful",
+  "ResponseCode": "0000",
+  "Data": {
+      "AmountPaid": 0.1,
+      "InvoiceId": "8A6KpNEZqN",
+      "ReceiptNumber": "257942f42ec140a1b614c7a54ece3eb7",
+      "Description": "The MTN Mobile Money payment has been approved and processed successfully.",
+      "PaymentMethod": "mobilemoney",
+      "PaymentChannel": "mtn-gh",
+      "PayeePhoneNumber": "233242825109"
+  }
+}
+
+SAMPLE CALLBACK (failed)
+JSON
+
+copy
+Copy
+
+{
+  "Status": "Failed",
+  "ResponseCode": "0001",
+  "Data": {
+      "AmountPaid": 0.1,
+      "InvoiceId": "9yDAA9e9K8",
+      "ReceiptNumber": "1ac98c3de854420795fb6bdee10f3030",
+      "Description": "The Vodafone Cash failed",
+      "PaymentMethod": "mobilemoney",
+      "PaymentChannel": "vodafone-gh-ussd",
+      "PayeePhoneNumber": "233205598630"
+  }
+}
+
+
+Auto Debit
+This enables you to create an invoice for your customer to make payment where their balance is automatically debited subsequently for each installments. This is very similar to payment by installments, but with auto debit, the customer’s wallet is automatically debited when the time is due for payment.
+
+To initiate an Auto Debit request, send an HTTP POST request to the below URL with the required parameters. It’s also mandatory to pass your Hubtel POS Sales ID for Auto Debit requests in the endpoint. Find your POS Sales ID here.
+
+
+API Endpoint	https://invoicing.hubtel.com/api/invoice/{POS_SALES_ID}/auto-debit
+Request Type	POST
+Content Type	JSON
+
+REQUEST PARAMETERS
+Parameter	Type	Requirement	Description
+invoiceNumber	String	Mandatory	The invoice number associated with the invoice being created. It must not be empty and should have a maximum length of 20 characters
+customerName	String	Mandatory	The name of the customer for whom this invoice is being created.
+callbackUrl	String	Mandatory	The callback URL expected to receive the final status of the payment
+customerPhoneNumber	String	Mandatory	The phoneNumber of the customer
+customerEmail	String	Optional	This refers to the email of the customer
+hasTax	String	Mandatory	This indicates whether tax will be added to the invoice.
+IssuedBy	String	Mandatory	This refers to the person/staff creating the invoice
+createdBy	String	Mandatory	This refers to the person or staff creating the invoice
+dueDate	DateTime	Mandatory	This refers to the date due for payment
+isDefault	Boolean	Optional	This helps to indicate whether an invoice is a draft invoice or not
+note	String	Optional	This refers to a description about the invoice
+reminders	Object	Optional	This helps send reminders to customers about making payment for the invoice created
+days	Integer	Mandatory	This indicates the frequency at which the reminders should be sent
+isBefore	Boolean	Mandatory	This indicates whether the due date Is before or after the currentDate
+firstPaymentAmount	Decimal	Mandatory	This is the initial amount the customer must pay
+firstPaymentDueDate	DateTime	Mandatory	This is the due date for the first paymentAmount.
+frequency	String	Mandatory	This refers to how you want to schedule the payment for the customer. The options are Daily, Weekly, Monthly and Yearly
+items	ArrayOfObjects	Mandatory	This helps schedule the auto-debit payment.
+description	String	Mandatory	A brief description of the payment being made.
+quantity	String	Mandatory	The quantity of the items being purchased
+unitPrice	Float	Mandatory	The cost for the item being purchased.
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+status	String	The description of response received from the Receive Money API that is related to the ResponseCode.
+Data	Object	An object containing the required data response from the Invoice API.
+InvoiceId	String	An invoice id generated and it is tied to the invoice
+paymentUrl	String	A payee can make payment on the same page the request was made from with this URL.
+message	String	A payee can make payment on the same page the request was made from with this URL.
+
+SAMPLE REQUEST
+HTTP
+
+copy
+Copy
+POST /api/invoice/11684/auto-debit HTTP/1.1 
+Host: invoicing.hubtel.com 
+Accept: application/json
+Content-Type: application/json
+Authorization: Basic endjeOBiZHhza24=
+Cache-Control: no-cache
+
+{
+  "invoiceNumber": "test2567",
+  "customerName": "John",
+  "customerPhoneNumber": "024000000",
+  "customerEmail": "rse@gmail.com",
+  "hasTax": true,
+  "issuedBy": "John",
+  "createdBy": "John",
+  "dueDate": "2025-03-20T08:00:23.147Z",
+  "isDefault": false,
+  "callbackUrl": "https://webhook.site/40b08e13-05f2-4892-8709-fe379878e6be",
+  "note": "Auto Debit test",
+  "firstPaymentDueDate": "2025-03-18T11:50:23.147Z",
+  "firstPaymentAmount": 0.50,
+  "frequency": "Daily",
+  "reminders": [
+      {
+          "days": 2,
+          "isBefore": true
+      }
+  ],
+  "items": [
+      {
+          "description": "Auto Debit test",
+          "quantity": 1,
+          "unitPrice": 1
+      }
+  ]
+}
+
+SAMPLE RESPONSE
+200 OK
+
+copy
+Copy
+{
+  "message": "Invoice Created Successfully",
+  "code": 200,
+  "data": {
+      "invoiceId": "j2ZqgYN5ft",
+      "paymentUrl": "https://invdebit.com/j2ZqgYN5ft"
+  }
+}
+
+Callback
+You will need to implement a callback endpoint on your server to receive payment and order notification statuses.
+
+SAMPLE CALLBACK (successful)
+JSON
+
+copy
+Copy
+{
+  "Status": "Successful",
+  "ResponseCode": "0000",
+  "Data": {
+      "AmountPaid": 0.01,
+      "InvoiceId": "K7hyTQcnT4",
+      "ReceiptNumber": "424f62e92e9245589d38e1583329d46b",
+      "Description": "The Vodafone Cash payment has been approved and processed successfully.",
+      "PaymentMethod": "mobilemoney",
+      "PaymentChannel": "vodafone-gh",
+      "PayeePhoneNumber": "233200585542",
+      "PaymentDetailId": "f4031fd2-d9ac-47dd-a399-5135cdc65e72"
+  }
+}
+
+SAMPLE CALLBACK (failed)
+JSON
+
+copy
+Copy
+
+{
+  "Status": "Failed",
+  "ResponseCode": "0001",
+  "Data": {
+      "AmountPaid": 0.1,
+      "InvoiceId": "9yDAA9e9K8",
+      "ReceiptNumber": "1ac98c3de854420795fb6bdee10f3030",
+      "Description": "The Vodafone Cash failed",
+      "PaymentMethod": "mobilemoney",
+      "PaymentChannel": "vodafone-gh-ussd",
+      "PayeePhoneNumber": "233205598630"
+  }
+}
+
+
+Retry
+The Retry API enables you to retry failed auto debit payments.
+
+To initiate an Retry request, send an HTTP POST request to the below URL with the required parameters. It’s also mandatory to pass your Hubtel POS Sales ID for Auto Debit requests in the endpoint. Find your POS Sales ID here.
+
+
+API Endpoint	https://invoicing.hubtel.com/api/invoice/{POS_SALES_ID}/payments/{PaymentDetailId}/retry
+Request Type	POST
+Content Type	JSON
+
+REQUEST PARAMETERS
+Parameter	Type	Requirement	Description
+POS_SALES_ID	String	Mandatory	The POS_SALES_ID associated with your account
+PaymentDetailId	String	Mandatory	The PaymentDetailId that is returned in the callback.
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+message	String	A brief description of the request status.
+code	Object	The status code.
+data	String	Always "null".
+
+SAMPLE REQUEST
+HTTP
+
+copy
+Copy
+POST /api/invoice/11684/payments/98a9fd4a-47f3-4709-8c4f-fb89465fcf51/retry HTTP/1.1 
+Host: invoicing.hubtel.com 
+Accept: application/json
+Content-Type: application/json
+Authorization: Basic endjeOBiZHhza24=
+Cache-Control: no-cache
+
+SAMPLE RESPONSE
+200 OK
+
+copy
+Copy
+{
+  "message": "Payment retry has been initiated. Check invoice status for confirmation.",
+  "code": 200,
+  "data": null
+}
+
+
+Callback
+You will need to implement a callback endpoint on your server to receive payment and order notification statuses.
+
+SAMPLE CALLBACK (successful)
+JSON
+
+copy
+Copy
+{
+  "Status": "Successful",
+  "ResponseCode": "0000",
+  "Data": {
+    "AmountPaid": 0.02,
+    "InvoiceId": "K7hyTQcnT4",
+    "ReceiptNumber": "K7hyTQcnT4-1",
+    "Description": "The Vodafone Cash payment has been approved and processed successfully.",
+    "PaymentMethod": "mobilemoney",
+    "PaymentChannel": "vodafone-gh",
+    "PayeePhoneNumber": "233200585542",
+    "PaymentDetailId": "98a9fd4a-47f3-4709-8c4f-fb89465fcf51"
+  }
+}
+
+SAMPLE CALLBACK (failed)
+JSON
+
+copy
+Copy
+
+{
+    "Status": "Failed",
+    "ResponseCode": "0001",
+    "Data": {
+        "AmountPaid": 0.02,
+        "InvoiceId": "K7hyTQcnT4",
+        "ReceiptNumber": "K7hyTQcnT4-1",
+        "Description": "Balance insufficient.",
+        "PaymentMethod": "mobilemoney",
+        "PaymentChannel": "vodafone-gh",
+        "PayeePhoneNumber": "233200585542",
+        "PaymentDetailId": "98a9fd4a-47f3-4709-8c4f-fb89465fcf51"
+    }
+}
+
+
+Transaction Status Check
+It is mandatory to implement the Transaction Status Check API as it allows merchants to check for the status of a transaction in rare instances where a merchant does not receive the final status of the transaction from Hubtel after five (5) minutes.
+
+To check the status of a transaction, send an HTTP GET request to the below URL, with the invoiceID as a parameters.
+
+It’s also mandatory to pass your POS Sales ID for Status Check requests in the endpoint. Find your POS Sales ID here.
+
+
+API Endpoint	https://invoicing.hubtel.com/api/invoice/{POS_SALES_ID}/{invoiceId}/status-check
+Request Type	GET
+Content Type	JSON
+
+SAMPLE REQUEST
+HTTP
+
+copy
+Copy
+GET api/invoice/11684/7w6wZymWZ2/status-check HTTP/1.1
+Host: invoicing.hubtel.com
+Authorization: Basic QmdfaWghe2JheXU6bXVhaHdpYW8pfQ==
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+message	String	The description of response received from the API that is related to the ResponseCode.
+code	String	The response code of the API after the request.
+data	Object	An object containing the required data response from the API.
+paymentStatus	String	Status of the transaction i.e.: Paid In Full, Partly Paid or Pending.
+paymentDetails	ArrayOfObject	Provides details about individual transactions.
+id	String	The unique ID used to identify a Hubtel transaction.
+amountDue	Float	The total amount the customer is expected to pay
+amountPaid	Float	The amount paid.
+dueDate	DateTime	This refers to the due date for the payment.
+paymentDate	DateTime	This refers to the date the payment was made.
+orderId	Float	Another identifier for the payment.
+status	String	Indicates whether a particular transaction is Paid, Pending or Failed.
+isWithinRetryWindow	Boolean	An indication on whether or not the payment can be retried.
+retriedCount	Number	An indication on how many times the transaction had to be retried.
+receiptNumber	String	The receipt Number associated with the payment. It can be null.
+
+SAMPLE RESPONSE (Paid)
+200 OK
+
+copy
+Copy
+{
+  "message": "Success",
+  "code": 200,
+  "data": {
+      "paymentStatus": "Paid In Full",
+      "paymentDetails": [
+          {
+              "id": "a7b82f4e-3dd4-41e2-bb16-1f50b8ec391c",
+              "amountDue": 0.01,
+              "amountPaid": 0.01,
+              "dueDate": "2025-03-20T12:11:23.147",
+              "paymentDate": "2025-03-20T12:11:40.197885",
+              "orderId": "a336f52370eb4a2c992865a4196236de",
+              "status": "Paid",
+              "isWithinRetryWindow": false,
+              "retriedCount": 0,
+              "receiptNumber": "79aeb15751f04b9d86061c1145ee4f52"
+          }
+      ]
+  }
+}
+SAMPLE RESPONSE (Unpaid)
+200 OK
+
+copy
+Copy
+{
+  "message": "Success",
+  "code": 200,
+  "data": {
+      "paymentStatus": "Pending",
+      "paymentDetails": [
+          {
+              "id": "c56be293-4ccb-4a3b-8052-66668af55932",
+              "amountDue": 0.1,
+              "amountPaid": 0.10,
+              "dueDate": "2025-03-20T09:46:23.147",
+              "paymentDate": "2025-03-20T09:53:17.294052",
+              "orderId": "26868b440f5d498abf76d7c0d2bbf3d8",
+              "status": "Failed",
+              "isWithinRetryWindow": false,
+              "retriedCount": 0,
+              "receiptNumber": "1ac98c3de854420795fb6bdee10f3030"
+          },
+          {
+              "id": "bc5c9e36-2161-4770-8aec-3956dc930a36",
+              "amountDue": 0.1,
+              "amountPaid": 0,
+              "dueDate": "2025-03-20T09:46:23.147",
+              "paymentDate": "0001-01-01T00:00:00",
+              "orderId": null,
+              "status": "Pending",
+              "isWithinRetryWindow": false,
+              "retriedCount": 0,
+              "receiptNumber": null
+          }
+      ]
+  }
+}
+
+
+Response Codes
+The Hubtel Sales API uses standard HTTP error reporting. Successful requests return HTTP status codes in the 2xx. Failed requests return status codes in 4xx and 5xx. Response codes are included in the JSON response body, which contain information about the response.
+
+Response Code	Description	Required Action
+0000	The transaction has been processed successfully.	None
+0001	The transaction failed.	None
+0005	There was an HTTP failure/exception when reaching the payment partner	The transaction state is not known. Please contact your Retail Systems Engineer to confirm the status of this transaction.
+2001	Transaction failed due to an error with the Payment Processor. Please review your request or retry in a few minutes	
+Customer either entered no or invalid PIN
+Mobile network not able to parse your request
+USSD session timeout
+Having strange characters (&*!%@) in your description
+2100	The request failed as the customer's phone is switched off.	None
+2101	The transaction failed as the PIN entered by the Airtel Money customer is invalid	None
+2102	The Airtel Money user has insufficient funds in wallet to make this payment	None
+2103	The mobile number specified is not registered on Airtel Money	None
+2050	The MTN Mobile Money user has insufficient funds in wallet to make this payment.	Customer has to top up mobile money wallet with funds more than the amount being charged.
+2051	The mobile number provided is not registered on MTN Mobile Money	Ensure that the mobile number is registered on the MTN channel.
+2152	The mobile number specified is not registered on Tigo cash.	None
+2153	The amount specified is more than the maximum allowed by Tigo Cash	None
+2154	The amount specified is more than the maximum daily limit allowed by Tigo Cash.	None
+2200	The recipient specified is not registered on Vodafone Cash.	None
+2201	The customer specified is not registered on Vodafone Cash.	None
+3008	The customer specified is not registered on Vodafone Cash.	The payment channel has been disabled on your account. Ensure you have uploaded your business registration documents for your account to be duly verified. Contact your Retail Systems Engineer with your Merchant Account Number if you are receiving this error even though you have provided the necessary documents.
+3009	Merchant account is not available.	Check to confirm if your merchant account number is valid.
+3012	You have insufficient funds in your Merchant Account	Amount is less than funds in merchant account.
+3013	Amount specified is less than the fees.	The amount you are charging is less than the fee.
+3022	Merchant account has been registered on this channel, but the channel has not been activated.	None
+3024	Specified Channel Provider is invalid	The selected payment channel is invalid.
+4000	Validation errors	Validation errors. Something is not quite right with this request. Please check again.
+4075	Insufficient prepaid balance	You don't have enough funds in your prepaid balance to send money to your customers. You can top-up your prepaid balance by transferring funds from your available balance or bank deposit.
+4080	Insufficient available balance	None
+4101	Authorization for request is denied	Ensure that you're providing the correct Basic Auth key for the Authorization header. Also ensure you’re passing your POS Sales number in the endpoint.
+4103	Permission denied	You are not allowed to perform this transaction. Kindly ensure your API keys are accurate.
+4105	Authenticated Hubtel organization is not owner of specified account number.	There's a mismatch of the Merchant Account number and the Basic Authorization key. Ensure your API keys are from the same Unity account as the Merchant Account.
+4505	Transaction has already been refunded	None

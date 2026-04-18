@@ -1,0 +1,339 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@keyframes searchExpand {
+  from {
+    width: 0;
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    width: 300px;
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.search-expand {
+  animation: searchExpand 0.3s ease-out forwards;
+}
+
+/* Hide scrollbar but keep scrolling functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #eedcf83a;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #000000;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #1a1a1a;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #1a1a1a;
+  --destructive: #dc2626;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #a3a3a3;
+  --chart-1: #f59e0b;
+  --chart-2: #3b82f6;
+  --chart-3: #10b981;
+  --chart-4: #eab308;
+  --chart-5: #ef4444;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #1a1a1a;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #1a1a1a;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #a3a3a3;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #1a1a1a;
+  --card-foreground: #fafafa;
+  --popover: #1a1a1a;
+  --popover-foreground: #fafafa;
+  --primary: #e5e5e5;
+  --primary-foreground: #1a1a1a;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: #737373;
+  --chart-1: #6366f1;
+  --chart-2: #22d3ee;
+  --chart-3: #ef4444;
+  --chart-4: #a855f7;
+  --chart-5: #f97316;
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #737373;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Prevent mobile zoom on input focus by ensuring minimum 16px font size */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  textarea,
+  select {
+    font-size: 16px !important; /* !important to override body/root scaling */
+    max-width: 100% !important; /* Prevent overflow */
+    box-sizing: border-box !important;
+  }
+
+  /* Additional fix for date/time inputs on mobile - they have intrinsic width */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-width: 0 !important;
+  }
+
+  /* Ensure date/time inputs fit in their containers on iOS */
+  @supports (-webkit-touch-callout: none) {
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"] {
+      font-size: 16px !important;
+      padding-right: 0.5rem !important;
+    }
+  }
+}
+
+/* Scale down the entire site by 10% for better visual density */
+body {
+  font-size: 90%;
+}
+
+/* Also scale the root for rem-based calculations */
+:root {
+  font-size: 14px; /* 90% of 16px */
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  @keyframes infiniteScroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  .animate-infiniteScroll {
+    animation: infiniteScroll 40s linear infinite;
+  }
+
+  .img-preview-container {
+    position: relative;
+    overflow: hidden;
+    background-color: theme('colors.neutral.100');
+  }
+  
+  .img-preview-content {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    transition: background-position 0.3s ease;
+  }
+
+  /* Custom Select Styling */
+.select-styled {
+  /* Remove default select arrow in Chrome/Safari/Firefox */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1em;
+  padding-right: 2.5rem;
+}
+
+/* Styling the dropdown */
+select.select-styled option {
+  padding: 0.75rem 1rem;
+  background-color: white;
+  color: #333;
+}
+
+select.select-styled option:hover,
+select.select-styled option:focus {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: white !important;
+}
+
+/* Style the optgroup */
+select.select-styled optgroup {
+  font-weight: 600;
+  font-size: 0.9rem;
+  background-color: #f5f5f5;
+  color: #333;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+select.select-styled {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  border-radius: 0.5rem;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+select.select-styled::-webkit-scrollbar {
+  display: none;
+}
+
+/* Style for option on hover - need to use these particular selectors for some browsers */
+select.select-styled option:checked,
+select.select-styled option:hover {
+  box-shadow: 0 0 10px 100px rgba(0, 0, 0, 0.8) inset;
+  color: white;
+  border-radius: 0.25rem;
+}
+
+/* Add custom dropdown arrow */
+select.select-styled:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(93, 95, 239, 0.2);
+}
+}
+
+/* Toast positioning */
+.Toastify__toast-container--top-right,
+.Toastify__toast-container--top-center,
+.Toastify__toast-container--top-left {
+  top: calc(4.5rem + 2.5px) !important; 
+}
+
+/* Custom modern scrollbar styling */
+.custom-scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent; /* Firefox */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode scrollbar */
+.dark .custom-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent; /* Firefox */
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}

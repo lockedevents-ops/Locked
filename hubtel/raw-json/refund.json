@@ -1,0 +1,108 @@
+Refund API
+Last updated December 23rd, 2025
+
+Overview
+The Hubtel Refund API allows you to refund monies to customers based on a previous order made. This document focuses on both:
+
+Card transactions Refund.
+Mobile money transactions Refund.
+bulb-icon
+Note
+You can only refund transactions within the last 45 days using this API. For older transactions, please send an email to business@hubtel.com.
+
+
+Getting Started
+
+Business IP Whitelisting
+You must share your public IP address with your Retail System Engineer for whitelisting.
+
+bulb-icon
+Note
+All API Endpoints are live and only requests from whitelisted IP(s) can reach the endpoints shared in this reference.
+
+
+API Reference
+This endpoint can be used to refund a successful mobile money or card transaction on your account. To initiate a request, send an HTTP POST request to the below URL with the required parameters. Passing your Hubtel POS Sales ID for Refund requests in the endpoint is also mandatory. Find your POS Sales ID here.
+
+API Endpoint	https://refund-api.hubtel.com/refund/{Hubtel_POS_Sales_ID}/order/{orderId}
+Request Type	POST
+Content Type	JSON
+
+REQUEST PARAMETERS
+Parameter	Type	Requirement	Description
+Hubtel_POS_Sales_ID	Number	Mandatory	The merchant's Hubtel POS Sales ID. Find yours here.
+OrderID	String	Mandatory	This is the OrderID from Hubtel for the payment which was processed. Eg. b230733cd56b4a0fad820e39f66bc27c
+CallbackURL	String	Mandatory	The callback URL to receive the final notification on the status of the payment
+
+SAMPLE REQUEST
+HTTP
+
+copy
+Copy
+  POST /refund/11684/order/79213a0568c44c13a8a04ba056d681 HTTP /1.1
+  Host: refund-api.hubtel.com
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Basic endjeOBiZa250fT3=
+  Cache-Control: no-cache
+  {
+      "callbackUrl":"https://webhook.site/b503d1a9-e726-f315254a6ede"
+  }
+
+RESPONSE PARAMETERS
+Parameter	Type	Description
+ResponseCode	String	The unique response code on the status of the request
+Message	String	The status of the request
+Data	Object	An object parameter that gives the details of the transaction whose status is being checked. ie. the order.
+OrderId	String	This isthe OrderId from Hubtel for the payment which was processed.
+
+SAMPLE RESPONSE
+200 OK
+
+copy
+Copy
+  {
+    "message": "Transaction pending. Expect callback request for final state.",
+    "responseCode": "0001",
+    "data": {
+        "orderId": "b230733cd56b4a0fad820e39f66bc27c"
+    }
+  }
+
+SAMPLE RESPONSE(Not Found)
+Not found
+
+copy
+Copy
+  {
+    "message": "Could not find order with ID 847ad350142a4970ac365d2294d3f3a5",
+    "responseCode": "3000",
+    "data": null
+  }
+SAMPLE CALLBACK
+JSON
+
+copy
+Copy
+{
+  "responseCode": "0000",
+  "message": "Successful",
+  "data": {
+      "amount": 0.5,
+      "charges": 0.01,
+      "orderId": "a4e406711db74687bbd307ead23bd015",
+      "externalTransactionId": "0000002673867446"
+    }
+}
+
+Response Codes
+The Hubtel Refund API uses standard HTTP error reporting. Successful requests return HTTP status codes in the 2xx. Failed requests return status codes in 4xx and 5xx.
+
+Response Codes are included in the JSON response body, which contains information about the error or status
+
+ResponseCode	Status	Description
+0001	202	Transaction pending. Expect callback request for final state. Data contains order ID
+3000	404	Could not find order with ID {orderId}. Data is null
+4000	404	Cannot honour refund request because amount on order is less than 1 cedi. Data is null
+4509	404	Order with ID {orderId} is not eligible for a refund. Data is null
+4515	423	Order with ID {orderId} is currently being processed. Please wait for callback on your supplied URL. This means you have made an initial refund request with the same order ID.
