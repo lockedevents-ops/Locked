@@ -42,7 +42,6 @@ import { useToast } from '@/hooks/useToast';
 import { useDurationCalculator } from '@/hooks/useDurationCalculator';
 import { LocationPicker } from '@/components/LocationPicker';
 import { 
-  checkDuplicateEventTitle,
   validateCityName,
   getCityValidationError,
   validateOnlineUrl,
