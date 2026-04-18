@@ -40,7 +40,6 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { 
-  checkDuplicateEventTitle,
   validateCityName,
   getCityValidationError,
   validateOnlineUrl,
@@ -56,11 +55,7 @@ import {
 const eventFormSchema = z.object({
   // Basic Details
   title: z.string().min(5, "Event title is required (minimum 5 characters)")
-    .max(100, "Event title cannot exceed 100 characters")
-    .refine(async (title) => {
-      const isDuplicate = await checkDuplicateEventTitle(title);
-      return !isDuplicate;
-    }, "An event with this title already exists. Please choose a different title."),
+    .max(100, "Event title cannot exceed 100 characters"),
   description: z.string().min(20, "Event description is required (minimum 20 characters)"),
   category: z.string().min(1, "Category is required"),
   format: z.string().min(1, "Format is required"),
