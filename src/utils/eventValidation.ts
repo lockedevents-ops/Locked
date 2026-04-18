@@ -25,43 +25,6 @@ export const MAX_IMAGE_SIZE_MB = 5; // For display purposes
 
 
 /**
- * Check if an event title already exists in the database
- */
-export async function checkDuplicateEventTitle(title: string, excludeId?: string): Promise<boolean> {
-  try {
-    const supabase = createClient();
-    
-    let query = supabase
-      .from('events')
-      .select('id, title')
-      .ilike('title', title.trim());
-
-    // If editing an event, exclude the current event from the check
-    if (excludeId) {
-      query = query.neq('id', excludeId);
-    }
-
-    const queryPromise = query;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Duplicate title check timed out after ${DUPLICATE_CHECK_TIMEOUT_MS}ms`)), DUPLICATE_CHECK_TIMEOUT_MS);
-    });
-
-    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-
-    if (error) {
-      debugValidation('[EventValidation] duplicate title check failed, allowing submit', error);
-      return false; // If there's an error, allow the operation to continue
-    }
-
-    // Return true if a duplicate is found
-    return data && data.length > 0;
-  } catch (error) {
-    debugValidation('[EventValidation] duplicate title check failed, allowing submit', error);
-    return false; // If there's an error, allow the operation to continue
-  }
-}
-
-/**
  * Check if a venue name already exists in the database
  */
 export async function checkDuplicateVenueName(name: string, excludeId?: string): Promise<boolean> {

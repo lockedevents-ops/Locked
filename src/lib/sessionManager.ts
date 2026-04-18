@@ -105,28 +105,44 @@ export async function validateSession() {
 export async function getCurrentUserWithRefresh() {
   const supabase = createClient();
   
-  // First, try to get the user without refresh
-  const { data: { user }, error } = await supabase.auth.getUser();
+  // Timeout safety for network hangs
+  const AUTH_TIMEOUT_MS = 10000; // 10 seconds
   
-  // If successful, return immediately
-  if (!error && user) {
+  const authPromise = (async () => {
+    // First, try to get the user without refresh
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    // If successful, return immediately
+    if (!error && user) {
+      return {
+        user,
+        error: null,
+        wasRefreshed: false
+      };
+    }
+    
+    // If failed, try refreshing the session
+    console.log('🔄 User fetch failed, attempting session refresh...');
+    const refreshResult = await refreshSession();
+    
     return {
-      user,
-      error: null,
-      wasRefreshed: false
+      user: refreshResult.user,
+      error: refreshResult.error,
+      wasRefreshed: true,
+      isExpired: refreshResult.isExpired
     };
-  }
-  
-  // If failed, try refreshing the session
-  console.log('🔄 User fetch failed, attempting session refresh...');
-  const refreshResult = await refreshSession();
-  
-  return {
-    user: refreshResult.user,
-    error: refreshResult.error,
-    wasRefreshed: true,
-    isExpired: refreshResult.isExpired
-  };
+  })();
+
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Authentication check timed out')), AUTH_TIMEOUT_MS)
+  );
+
+  return Promise.race([authPromise, timeoutPromise]) as Promise<{
+    user: any;
+    error: any;
+    wasRefreshed: boolean;
+    isExpired?: boolean;
+  }>;
 }
 
 /**

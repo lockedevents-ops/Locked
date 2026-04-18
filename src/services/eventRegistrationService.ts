@@ -39,6 +39,7 @@ export interface EventRegistrationStats {
   total_registrations: number;
   confirmed_registrations: number;
   cancelled_registrations: number;
+  total_revenue: number;
   registrations_by_ticket_type: { [key: string]: number };
   recent_registrations: EventRegistration[];
 }
@@ -419,6 +420,7 @@ class EventRegistrationService {
         total_registrations: data.total_registrations || 0,
         confirmed_registrations: data.total_registrations || 0, // Simplified for this view
         cancelled_registrations: 0,
+        total_revenue: data.total_revenue || 0,
         registrations_by_ticket_type: data.registrations_by_ticket_type || {},
         recent_registrations: []
       };
@@ -436,11 +438,13 @@ class EventRegistrationService {
         total_registrations: 0,
         confirmed_registrations: 0,
         cancelled_registrations: 0,
+        total_revenue: 0,
         registrations_by_ticket_type: {},
         recent_registrations: []
       };
       
       const regs = registrations || [];
+      const totalRevenue = regs.reduce((sum: number, reg: any) => sum + (reg.total_amount || 0), 0);
       const byTicketType = regs.reduce((acc: { [key: string]: number }, reg: any) => {
         acc[reg.ticket_type] = (acc[reg.ticket_type] || 0) + reg.quantity_registered;
         return acc;
@@ -450,6 +454,7 @@ class EventRegistrationService {
         total_registrations: regs.length,
         confirmed_registrations: regs.length,
         cancelled_registrations: 0,
+        total_revenue: totalRevenue,
         registrations_by_ticket_type: byTicketType,
         recent_registrations: []
       };

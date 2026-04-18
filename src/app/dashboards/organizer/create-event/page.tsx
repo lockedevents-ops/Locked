@@ -47,7 +47,6 @@ import { useDurationCalculator } from '@/hooks/useDurationCalculator';
 import { LocationPicker } from '@/components/LocationPicker';
 import { ImageCropModal } from '@/components/ImageCropModal';
 import { 
-  checkDuplicateEventTitle,
   validateCityName,
   getCityValidationError,
   validateOnlineUrl,
@@ -63,11 +62,7 @@ import {
 const eventFormSchema = z.object({
   // Basic Details
   title: z.string().min(5, "Event title is required (minimum 5 characters)")
-    .max(100, "Event title cannot exceed 100 characters")
-    .refine(async (title) => {
-      const isDuplicate = await checkDuplicateEventTitle(title);
-      return !isDuplicate;
-    }, "An event with this title already exists. Please choose a different title."),
+    .max(100, "Event title cannot exceed 100 characters"),
   description: z.string().min(20, "Event description is required (minimum 20 characters)"),
   category: z.string().min(1, "Category is required"),
   
@@ -348,9 +343,27 @@ const EVENT_DRAFT_REFRESH_FLAG_KEY = 'locked:event-creator:refresh';
 const EVENT_DRAFT_AUTOSAVE_DELAY = 800;
 const EVENT_CREATION_DEBUG = process.env.NEXT_PUBLIC_DEBUG_EVENT_CREATION === 'true';
 
+const terminalLog = async (message: string, data?: any, level: 'info' | 'warn' | 'error' = 'info') => {
+  if (EVENT_CREATION_DEBUG) {
+    console.log(`[${level.toUpperCase()}] ${message}`, data || '');
+    // Silenced for now to reduce noise as requested
+    /*
+    try {
+      fetch('/api/debug', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level, message, data }),
+      }).catch(() => {});
+    } catch (e) {}
+    */
+  }
+};
+
 const debugEventCreation = (...args: unknown[]) => {
   if (EVENT_CREATION_DEBUG) {
     console.log(...args);
+    const message = args.map(arg => typeof arg === 'string' ? arg : JSON.stringify(arg)).join(' ');
+    terminalLog(message);
   }
 };
 
@@ -420,6 +433,7 @@ function DurationDisplayField({ watch }: { watch: any }) {
 export default function CreateEventPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPrevalidating, setIsPrevalidating] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
@@ -1072,22 +1086,20 @@ export default function CreateEventPage() {
 
   // Handle form submission
   const onSubmit = async (data: EventFormValues, isDraft = false) => {
-    debugEventCreation('[CreateEvent] onSubmit called', { isDraft, status: data.status });
+    debugEventCreation('[CreateEvent] onSubmit triggered', { isDraft, status: data.status });
     
     try {
       setIsSubmitting(true);
-      debugEventCreation('[CreateEvent] setting submitting=true');
       
       // Use either the explicit isDraft parameter or the form status field
       const finalStatus = isDraft || data.status === "draft" ? "draft" : "published";
       debugEventCreation('[CreateEvent] final status', finalStatus);
       
       // ✅ CRITICAL FIX: Use session-aware auth with automatic refresh
-      debugEventCreation('[CreateEvent] validating session before submit');
       const { user: supabaseUser, error: authError, wasRefreshed, isExpired } = await getCurrentUserWithRefresh();
       
       if (authError || !supabaseUser) {
-        console.error('Authentication failed during event submission:', authError);
+        terminalLog('[CreateEvent] Authentication failed during event submission', authError, 'error');
         
         if (isExpired) {
           toast.showError(
@@ -3413,33 +3425,79 @@ export default function CreateEventPage() {
               ) : (
                 <button
                   type="button"
-                  onClick={async () => {
-                    debugEventCreation('[CreateEvent] create clicked in edit mode');
+                   onClick={async () => {
+                    terminalLog('[CreateEvent] Create button clicked physically');
+                    setIsPrevalidating(true);
+                    
+                    // ✅ PROACTIVE SESSION REFRESH: Before validation starts
+                    try {
+                      terminalLog('[CreateEvent] Calling keepSessionAlive...');
+                      await keepSessionAlive();
+                      terminalLog('[CreateEvent] Session keep-alive success');
+                    } catch (e) {
+                      terminalLog('[CreateEvent] Session keep-alive failed, but proceeding anyway', e, 'warn');
+                    }
+
                     // Validate first, then let onSubmit control submitting state.
                     setTimeout(() => {
                       handleSubmitWithValidation(async () => {
-                        debugEventCreation('[CreateEvent] invoking react-hook-form submit');
+                        // Setup error handler for react-hook-form handleSubmit
+                        const onFormError = (errors: any) => {
+                          debugEventCreation('[CreateEvent] React-hook-form validation failed', errors);
+                          
+                          // Show a summary toast of errors
+                          const getErrorMessage = (err: any): string => {
+                            if (err?.message) return err.message;
+                            if (typeof err === 'object') {
+                              const firstKey = Object.keys(err)[0];
+                              if (firstKey) return getErrorMessage(err[firstKey]);
+                            }
+                            return 'Invalid data';
+                          };
+
+                          const errorMessages = Object.keys(errors).map(key => {
+                            const error = errors[key];
+                            const msg = getErrorMessage(error);
+                            return `${key}: ${msg}`;
+                          });
+                          
+                          toast.showError(
+                            'Validation Failed', 
+                            `Please check your entries: ${errorMessages.slice(0, 3).join(', ')}${errorMessages.length > 3 ? '...' : ''}`
+                          );
+                          
+                          setIsPrevalidating(false);
+                        };
+
                         await handleSubmit(async (data: EventFormValues) => {
-                          debugEventCreation('[CreateEvent] submit callback invoked');
-                          await onSubmit(data, false);
-                        })().catch((e) => {
-                          debugEventCreation('[CreateEvent] schema validation failed during event submit', e);
+                          try {
+                            await onSubmit(data, false);
+                          } catch (innerError) {
+                            terminalLog('[CreateEvent] onSubmit threw an error', innerError, 'error');
+                          } finally {
+                            setIsPrevalidating(false);
+                          }
+                        }, onFormError)().catch((e) => {
+                          terminalLog('[CreateEvent] Promise-level error in handleSubmit', e, 'error');
+                          setIsPrevalidating(false);
                         });
                       }, () => {
-                        // No-op: loading state is now managed only inside onSubmit.
+                        setIsPrevalidating(false);
                       });
                     }, 0);
                   }}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isPrevalidating}
                   className={`w-full sm:w-auto px-6 py-2 rounded-md font-medium flex items-center justify-center gap-2 transition-all duration-200 ${
-                    isSubmitting
+                    (isSubmitting || isPrevalidating)
                       ? "bg-neutral-300 text-neutral-500 cursor-not-allowed"
                       : "bg-primary text-white hover:bg-primary-dark hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                   }`}
                 >
-                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {(isSubmitting || isPrevalidating) && <Loader2 className="w-4 h-4 animate-spin" />}
                   {isSubmitting 
                     ? "Creating..." 
+                    : isPrevalidating
+                    ? "Validating..."
                     : (watch("status") === "draft" ? "Create Draft" : "Create Event")}
                 </button>
               )}

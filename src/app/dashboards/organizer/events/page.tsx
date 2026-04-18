@@ -19,6 +19,8 @@ import {
     ChevronLeft,
     ChevronRight,
     ShoppingBag,
+    Tag,
+    BarChart3,
 } from "lucide-react";
 import { MdHowToVote } from "react-icons/md";
 import { useToast } from '@/hooks/useToast';
@@ -121,7 +123,14 @@ export default function EventsPage() {
                     path: '/dashboards/organizer/events',
                 });
 
-                const organizerLookupResult = await withTimeout<any>(
+                // ✅ FIX: Verify session is actually available in the browser client
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    console.warn("[EventsPage] No active session found during lookup, waiting for AuthContext...");
+                    return;
+                }
+
+                let organizerLookupResult = await withTimeout<any>(
                     supabase
                         .from('organizers')
                         .select('id')
@@ -130,7 +139,28 @@ export default function EventsPage() {
                         .maybeSingle(),
                     ORGANIZER_LOOKUP_TIMEOUT_MS,
                     `Organizer lookup timed out after ${ORGANIZER_LOOKUP_TIMEOUT_MS}ms`
-                ); // Use maybeSingle() instead of single() to avoid 406 errors
+                );
+
+                // ✅ RETRY LOGIC: If nothing found, wait 1.5s and try once more
+                // This handles race conditions where the record exists but isn't visible yet due to session propagation delays
+                if (!organizerLookupResult.data && !organizerLookupResult.error && !cancelled) {
+                    console.log("[EventsPage] Organizer not found initially, retrying in 1.5s...");
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    if (cancelled) return;
+                    
+                    organizerLookupResult = await withTimeout<any>(
+                        supabase
+                            .from('organizers')
+                            .select('id')
+                            .eq('user_id', user.id)
+                            .abortSignal(organizerLookupController.signal)
+                            .maybeSingle(),
+                        ORGANIZER_LOOKUP_TIMEOUT_MS,
+                        `Organizer lookup retry timed out`
+                    );
+                }
+
                 const { data, error } = organizerLookupResult;
 
                 if (error) {
@@ -594,121 +624,147 @@ export default function EventsPage() {
                                     </div>
                                 </div>
                             ) : (
-                                // List View - Matching the venue list view exactly
-                                <div className="p-6 flex flex-col md:flex-row gap-6">
-                                    {/* Event Icon - Rounded just like venues */}
-                                    <button
-                                        onClick={() => window.location.href = `/dashboards/organizer/events/${event.id}`}
-                                        className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                                        aria-label={`Open ${event.title} event management`}
-                                    >
+                                // Premium Horizontal List View
+                                <div className="flex flex-col lg:flex-row gap-6 p-5">
+                                    {/* Event Image - Horizontal aspect */}
+                                    <div className="flex-shrink-0 w-full lg:w-48 h-32 relative rounded-xl overflow-hidden shadow-sm border border-neutral-100">
                                         {event.imageUrl ? (
-                                            <div className="w-16 h-16 relative rounded-full overflow-hidden">
-                                                <Image 
-                                                    src={getFormattedImagePath(event.imageUrl)} 
-                                                    alt={event.title} 
-                                                    fill 
-                                                    className="object-cover"
-                                                    loading="lazy"
-                                                    quality={75}
-                                                />
-                                            </div>
+                                            <Image 
+                                                src={getFormattedImagePath(event.imageUrl)} 
+                                                alt={event.title} 
+                                                fill 
+                                                className="object-cover"
+                                                loading="lazy"
+                                                quality={75}
+                                            />
                                         ) : (
-                                            <div className="w-16 h-16 bg-neutral-200 rounded-full flex items-center justify-center">
-                                                <CalendarIcon className="w-8 h-8 text-neutral-400" />
+                                            <div className="w-full h-full bg-gradient-to-br from-neutral-100 to-neutral-200 flex items-center justify-center">
+                                                <CalendarIcon className="w-10 h-10 text-neutral-400" />
                                             </div>
                                         )}
-                                    </button>
+                                        {/* Status Badge Overlay */}
+                                        <div className="absolute top-2 left-2 z-10">
+                                            <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md shadow-sm border backdrop-blur-md ${
+                                                event.status === "published"
+                                                    ? 'bg-blue-500/90 text-white border-blue-400/30'
+                                                    : 'bg-neutral-500/90 text-white border-neutral-400/30'
+                                            }`}>
+                                                {event.status === "published" ? "Published" : "Draft"}
+                                            </span>
+                                        </div>
+                                    </div>
                                     
-                                    {/* Event Info */}
-                                    <div className="flex-grow">
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <h2 className="text-lg font-bold flex items-center gap-2 flex-wrap">
-                                                    {event.title}
-                                                    <span className={`text-xs px-2 py-1 rounded-full ${
-                                                        event.status === "published"
-                                                            ? 'bg-blue-100 text-blue-800'
-                                                            : 'bg-neutral-100 text-neutral-800'
-                                                    }`}>
-                                                        {event.status === "published" ? "Published" : "Draft"}
-                                                    </span>
-                                                    {event.hasMerch && (
-                                                        <div className="flex items-center gap-1.5 bg-purple-100 text-purple-600 px-2 py-1 rounded-full">
-                                                            <ShoppingBag className="w-3 h-3" />
-                                                            <span className="text-xs font-semibold">Merch</span>
+                                    {/* Event Info - Main Section */}
+                                    <div className="flex-grow min-w-0">
+                                        <div className="flex flex-col h-full">
+                                            <div className="flex items-start justify-between gap-4 mb-2">
+                                                <div className="min-w-0">
+                                                    <h2 className="text-xl font-bold text-neutral-900 truncate mb-1">
+                                                        {event.title}
+                                                    </h2>
+                                                    <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <CalendarIcon className="w-4 h-4 text-primary" />
+                                                            <span>{event.date}</span>
                                                         </div>
-                                                    )}
-                                                    {event.hasVoting && (
-                                                        <div className="flex items-center gap-1 bg-green-100 text-green-600 px-2 py-1 rounded-full">
-                                                            <MdHowToVote className="w-3 h-3" />
-                                                            <span className="text-xs font-semibold">Voting</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <MapPinIcon className="w-4 h-4 text-primary" />
+                                                            <span className="truncate max-w-[200px]">{event.location}</span>
                                                         </div>
-                                                    )}
-                                                </h2>
+                                                        <div className="hidden sm:flex items-center gap-1.5 font-medium text-neutral-700">
+                                                            <Tag className="w-4 h-4 text-primary" />
+                                                            <span>{event.category || "General"}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                                 
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-1 text-sm text-neutral-600">
-                                                    <div className="flex items-center gap-1">
-                                                        <CalendarIcon className="w-4 h-4" />
-                                                        <span>{event.date}</span>
+                                                {/* Action Buttons for List View */}
+                                                <div className="hidden md:flex items-center gap-2">
+                                                    <Link
+                                                        href={`/dashboards/organizer/events/${event.id}`}
+                                                        className="bg-primary text-white p-2 rounded-lg hover:bg-primary-dark transition-all shadow-sm hover:shadow-md"
+                                                        title="Manage Event"
+                                                    >
+                                                        <BarChart3 className="w-5 h-5" />
+                                                    </Link>
+                                                    <Link
+                                                        href={`/dashboards/organizer/events/${event.id}/edit`}
+                                                        className="bg-white border border-neutral-200 text-neutral-700 p-2 rounded-lg hover:bg-neutral-50 transition-all shadow-sm hover:shadow-md"
+                                                        title="Edit Event"
+                                                    >
+                                                        <Edit className="w-5 h-5" />
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Metrics Row */}
+                                            <div className="mt-auto grid grid-cols-2 sm:grid-cols-4 gap-4 py-3 border-t border-neutral-50">
+                                                <div>
+                                                    <p className="text-[10px] uppercase text-neutral-400 font-bold mb-1">Tickets Sold</p>
+                                                    <div className="flex items-baseline gap-1">
+                                                        <p className="text-base font-bold text-neutral-900">
+                                                            {registrations[event.id]?.total_registrations || event.ticketsSold || 0}
+                                                        </p>
+                                                        <p className="text-xs text-neutral-400">/ {event.totalCapacity || 100}</p>
                                                     </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <MapPinIcon className="w-4 h-4" />
-                                                        <span>{event.location}</span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] uppercase text-neutral-400 font-bold mb-1">Revenue</p>
+                                                    <p className="text-base font-bold text-success">
+                                                        ₵{(registrations[event.id]?.total_revenue || 0).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <div className="hidden sm:block">
+                                                    <p className="text-[10px] uppercase text-neutral-400 font-bold mb-1">Engagement</p>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex items-center gap-1 text-xs text-neutral-600">
+                                                            <EyeIcon className="w-3.5 h-3.5 text-blue-500" />
+                                                            <span>{event.viewCount || 0}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 text-xs text-neutral-600">
+                                                            <UsersIcon className="w-3.5 h-3.5 text-purple-500" />
+                                                            <span>{event.attendeeCount || 0}</span>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <span className="font-medium">Category:</span> {event.category || "General"}
+                                                </div>
+                                                <div className="hidden sm:block">
+                                                    <p className="text-[10px] uppercase text-neutral-400 font-bold mb-1">Features</p>
+                                                    <div className="flex gap-1.5">
+                                                        {event.hasVoting && (
+                                                            <div title="Voting Enabled">
+                                                                <MdHowToVote className="w-4 h-4 text-green-500" />
+                                                            </div>
+                                                        )}
+                                                        {event.hasMerch && (
+                                                            <div title="Merch Available">
+                                                                <ShoppingBag className="w-4 h-4 text-purple-500" />
+                                                            </div>
+                                                        )}
+                                                        {event.isFeatured && (
+                                                            <div title="Featured">
+                                                                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
+                                            
+                                            {/* Mobile-only Action Buttons */}
+                                            <div className="mt-4 flex md:hidden items-center gap-2">
+                                                <Link
+                                                    href={`/dashboards/organizer/events/${event.id}`}
+                                                    className="flex-1 bg-primary text-white py-2 rounded-lg text-center text-sm font-bold shadow-sm"
+                                                >
+                                                    Manage
+                                                </Link>
+                                                <Link
+                                                    href={`/dashboards/organizer/events/${event.id}/edit`}
+                                                    className="flex-1 bg-white border border-neutral-200 text-neutral-700 py-2 rounded-lg text-center text-sm font-bold shadow-sm"
+                                                >
+                                                    Edit
+                                                </Link>
+                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    {/* Event Actions - Right side */}
-                                    <div className="flex-shrink-0 w-full md:w-auto">
-                                        <div className="flex flex-col md:flex-row gap-3">
-                                            <Link
-                                                href={`/dashboards/organizer/events/${event.id}`}
-                                                className="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-dark transition-colors text-center cursor-pointer"
-                                            >
-                                                Manage Event
-                                            </Link>
-                                            <Link
-                                                href={`/dashboards/organizer/events/${event.id}/edit`}
-                                                className="bg-white border border-neutral-300 text-neutral-800 px-4 py-2 rounded-md text-sm font-medium hover:bg-neutral-50 transition-colors text-center cursor-pointer"
-                                            >
-                                                <Edit className="w-4 h-4 inline mr-1" />
-                                                Edit
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {/* Bottom stats bar - Only in list view */}
-                            {viewMode === "list" && (
-                                <div className="bg-neutral-50 p-3 border-t border-neutral-200 grid grid-cols-3 gap-4">
-                                    <div>
-                                        <p className="text-xs text-neutral-500">Attendees</p>
-                                        <p className="font-medium">{event.attendeeCount || 0}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-neutral-500">
-                                            {(registrations[event.id]?.total_registrations ?? 0) > 0 ? 'Registrations' : 'Tickets Sold'}
-                                        </p>
-                                        <p className="font-medium">
-                                            {registrations[event.id]?.total_registrations || event.ticketsSold || 0}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-neutral-500">Created</p>
-                                        <p className="font-medium">
-                                            {new Date(event.createdAt || Date.now()).toLocaleDateString(undefined, {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric'
-                                            })}
-                                        </p>
                                     </div>
                                 </div>
                             )}
