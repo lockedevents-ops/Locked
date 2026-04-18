@@ -313,9 +313,20 @@ export const eventDatabaseService = {
       }
     }
     
+    // ✅ GENERATE UNIQUE SLUG
+    let slug = '';
+    try {
+      const { generateUniqueSlug } = await import('@/utils/slugify');
+      slug = await generateUniqueSlug(eventData.title);
+    } catch (slugError) {
+      console.error('[EventDatabase] failed to generate slug', slugError);
+      slug = `event-${Date.now()}`; // Fallback if utility fails
+    }
+
     // Transform event data to database format
     const dbEventData = {
       organizer_id: organizerId,
+      slug, // ✅ Added missing slug field
       venue: eventData.venue || null,
       venue_id: eventData.venueId || null,
       location_address: eventData.venue || null, // Also store venue as location_address

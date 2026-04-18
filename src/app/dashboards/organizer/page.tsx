@@ -20,7 +20,8 @@ import {
   Ticket,
   Users,
   Lock,
-  MapPin as Location
+  MapPin as Location,
+  ChevronRight
 } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -360,52 +361,84 @@ export default function OrganizerDashboardPage() {
         {upcomingEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {upcomingEvents.slice(0, 4).map((event) => (
-              <div key={event.id} className="bg-white rounded-lg overflow-hidden shadow-sm border border-neutral-100 flex flex-col md:flex-row">
-                {event.imageUrl && (
-                  <div className="relative h-48 md:h-auto md:w-1/3">
+              <div key={event.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-neutral-100 flex flex-col sm:flex-row hover:shadow-md transition-all group">
+                {event.imageUrl ? (
+                  <div className="relative h-48 sm:h-auto sm:w-1/3 overflow-hidden">
                     <Image
                       src={event.imageUrl}
                       alt={event.title}
                       fill
-                      className="object-cover"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />
+                    <div className="absolute top-2 left-2">
+                        <span className="bg-primary/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-white/20 uppercase tracking-wider">
+                           Upcoming
+                        </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-48 sm:h-auto sm:w-1/3 bg-neutral-100 flex items-center justify-center">
+                    <Calendar className="h-10 w-10 text-neutral-300" />
                   </div>
                 )}
-                <div className="p-4 md:p-6 flex-1">
-                  <h3 className="font-bold text-lg mb-1">{event.title}</h3>
-                  <div className="text-neutral-500 text-sm space-y-1 mb-3">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>{event.date}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Location className="h-4 w-4" />
-                      <span>{event.location}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      <span>{event.ticketsSold} / {event.totalCapacity} tickets sold</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="w-full max-w-xs">
-                      <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary rounded-full"
-                          style={{ width: `${(event.ticketsSold / event.totalCapacity) * 100}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between mt-1 text-xs text-neutral-500">
-                        <span>{Math.round((event.ticketsSold / event.totalCapacity) * 100)}% sold</span>
-                        <span>{event.totalCapacity - event.ticketsSold} remaining</span>
-                      </div>
-                    </div>
+                <div className="p-5 flex-1 flex flex-col">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-lg text-neutral-900 group-hover:text-primary transition-colors line-clamp-1">{event.title}</h3>
                     <Link
                       href={`/dashboards/organizer/events/${event.id}`}
-                      className="ml-4 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 px-3 py-1 rounded text-sm font-medium transition-colors"
+                      className="text-neutral-400 hover:text-primary transition-colors"
+                      title="Manage Event"
                     >
-                      Manage
+                      <BarChart3 className="w-5 h-5" />
                     </Link>
+                  </div>
+                  
+                  <div className="text-neutral-500 text-sm space-y-2 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-primary/70" />
+                      <span className="font-medium text-neutral-700">{event.date}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Location className="h-4 w-4 text-primary/70" />
+                      <span className="truncate">{event.location}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto space-y-3">
+                    <div className="flex justify-between items-end mb-1">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase text-neutral-400 tracking-tight">Ticket Sales</p>
+                        <p className="text-sm font-bold text-neutral-800">
+                          {event.ticketsSold} <span className="text-neutral-400 font-normal">/ {event.totalCapacity} sold</span>
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold uppercase text-neutral-400 tracking-tight">Revenue</p>
+                        <p className="text-sm font-bold text-success">₵{(event.revenue || 0).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="relative">
+                      <div className="h-2 bg-neutral-100 rounded-full overflow-hidden border border-neutral-50">
+                        <div 
+                          className="h-full bg-gradient-to-r from-primary to-primary-dark rounded-full transition-all duration-1000 ease-out"
+                          style={{ width: `${Math.min(100, Math.max(0, (event.ticketsSold / event.totalCapacity) * 100))}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center pt-1">
+                        <div className="text-[11px] font-semibold text-neutral-500">
+                           {Math.round((event.ticketsSold / event.totalCapacity) * 100)}% Goal Reached
+                        </div>
+                        <Link
+                          href={`/dashboards/organizer/events/${event.id}`}
+                          className="text-xs font-bold text-primary hover:text-primary-dark flex items-center gap-1 group/link"
+                        >
+                          Manage Detailed Stats
+                          <ChevronRight className="w-3 h-3 group-hover/link:translate-x-0.5 transition-transform" />
+                        </Link>
+                    </div>
                   </div>
                 </div>
               </div>

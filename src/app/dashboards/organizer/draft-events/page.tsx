@@ -78,8 +78,15 @@ export default function DraftEventsPage() {
           path: '/dashboards/organizer/draft-events',
         });
 
+        // ✅ FIX: Verify session is actually available in the browser client
         const supabase = createClient();
-        const organizerLookupResult = await withTimeout<any>(
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.warn("[DraftEventsPage] No active session found during lookup, waiting for AuthContext...");
+          return;
+        }
+
+        let organizerLookupResult = await withTimeout<any>(
           supabase
             .from('organizers')
             .select('id')
@@ -89,6 +96,27 @@ export default function DraftEventsPage() {
           ORGANIZER_LOOKUP_TIMEOUT_MS,
           `Organizer lookup timed out after ${ORGANIZER_LOOKUP_TIMEOUT_MS}ms`
         );
+
+        // ✅ RETRY LOGIC: If nothing found, wait 1.5s and try once more
+        // This handles race conditions where the record exists but isn't visible yet due to session propagation delays
+        if (!organizerLookupResult.data && !organizerLookupResult.error && !cancelled) {
+          console.log("[DraftEventsPage] Organizer not found initially, retrying in 1.5s...");
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          if (cancelled) return;
+          
+          organizerLookupResult = await withTimeout<any>(
+            supabase
+              .from('organizers')
+              .select('id')
+              .eq('user_id', user.id)
+              .abortSignal(organizerLookupController.signal)
+              .maybeSingle(),
+            ORGANIZER_LOOKUP_TIMEOUT_MS,
+            `Organizer lookup retry timed out`
+          );
+        }
+
         const { data, error } = organizerLookupResult;
 
         if (error) {
@@ -455,98 +483,116 @@ export default function DraftEventsPage() {
                   </div>
                 </div>
               ) : (
-                // List View - matched to my events page
-                <div>
-                  <div className="p-6 flex flex-col md:flex-row gap-6">
-                    {/* Event Icon - Circular like in events page */}
-                    <div className="flex-shrink-0">
-                      {event.imageUrl ? (
-                        <div className="w-16 h-16 relative rounded-full overflow-hidden">
-                          <Image 
-                            src={event.imageUrl} 
-                            alt={event.title} 
-                            fill 
-                            className="object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-16 h-16 bg-neutral-200 rounded-full flex items-center justify-center">
-                          <CalendarIcon className="w-8 h-8 text-neutral-400" />
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Event Info - matched to my events page */}
-                    <div className="flex-grow">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h2 className="text-lg font-bold flex items-center gap-2">
-                            {event.title}
-                            <span className="text-xs px-2 py-1 rounded-full bg-neutral-100 text-neutral-800">
-                              Draft
-                            </span>
-                          </h2>
-                          
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-1 text-sm text-neutral-600">
-                            <div className="flex items-center gap-1">
-                              <CalendarIcon className="w-4 h-4" />
-                              <span>{event.date || "Date not set"}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <MapPinIcon className="w-4 h-4" />
-                              <span>{event.location || "Location not set"}</span>
-                            </div>
-                            <div>
-                              <span className="font-medium">Category:</span> {event.category || "General"}
-                            </div>
-                          </div>
-                        </div>
+                // Premium Horizontal List View for Drafts
+                <div className="flex flex-col lg:flex-row gap-6 p-5">
+                  {/* Event Image - Horizontal aspect */}
+                  <div className="flex-shrink-0 w-full lg:w-48 h-32 relative rounded-xl overflow-hidden shadow-sm border border-neutral-100 bg-neutral-50">
+                    {event.imageUrl ? (
+                      <Image 
+                        src={event.imageUrl} 
+                        alt={event.title} 
+                        fill 
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <CalendarIcon className="w-10 h-10 text-neutral-300" />
                       </div>
-                    </div>
-                    
-                    {/* Event Actions - Right side - matched to my events page */}
-                    <div className="flex-shrink-0 w-full md:w-auto">
-                      <div className="flex flex-col md:flex-row gap-3">
-                        <Link
-                          href={`/dashboards/organizer/events/${event.id}/edit`}
-                          className="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-dark transition-colors text-center cursor-pointer"
-                        >
-                          <Edit className="w-4 h-4 inline mr-1" />
-                          Edit Draft
-                        </Link>
-                        <button
-                          onClick={() => handlePublish(event.id)}
-                          className="bg-white border border-neutral-300 text-neutral-800 px-4 py-2 rounded-md text-sm font-medium hover:bg-neutral-50 transition-colors text-center cursor-pointer"
-                        >
-                          <PlayIcon className="w-4 h-4 inline mr-1" />
-                          Publish
-                        </button>
-                        <button
-                          onClick={() => confirmDelete(event.id)}
-                          className="bg-red-50 text-red-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-red-100 transition-colors text-center cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4 inline mr-1" />
-                          Delete
-                        </button>
-                      </div>
+                    )}
+                    {/* Status Badge Overlay */}
+                    <div className="absolute top-2 left-2 z-10">
+                      <span className="bg-neutral-800/80 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-white/10 uppercase tracking-wider">
+                         Draft
+                      </span>
                     </div>
                   </div>
                   
-                  {/* Bottom stats bar - Added to match events page */}
-                  <div className="bg-neutral-50 p-3 border-t border-neutral-200 grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-neutral-500">Last Saved</p>
-                      <p className="font-medium">
-                        {new Date(event.createdAt || Date.now()).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </p>
+                  {/* Event Info - Main Section */}
+                  <div className="flex-grow min-w-0 flex flex-col">
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div className="min-w-0">
+                        <h2 className="text-xl font-bold text-neutral-900 truncate mb-1">
+                          {event.title || "Untitled Draft"}
+                        </h2>
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-500">
+                          <div className="flex items-center gap-1.5">
+                            <CalendarIcon className="w-4 h-4 text-primary/70" />
+                            <span>{event.date || "Date TBD"}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <MapPinIcon className="w-4 h-4 text-primary/70" />
+                            <span className="truncate max-w-[200px]">{event.location || "Location TBD"}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Desktop Action Buttons */}
+                      <div className="hidden md:flex items-center gap-2">
+                        <Link
+                          href={`/dashboards/organizer/events/${event.id}/edit`}
+                          className="bg-white border border-neutral-200 text-neutral-700 p-2 rounded-lg hover:bg-neutral-50 transition-all shadow-sm hover:shadow-md"
+                          title="Edit Draft"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </Link>
+                        <button
+                          onClick={() => handlePublish(event.id)}
+                          className="bg-primary text-white p-2 rounded-lg hover:bg-primary-dark transition-all shadow-sm hover:shadow-md"
+                          title="Publish Event"
+                        >
+                          <PlayIcon className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => confirmDelete(event.id)}
+                          className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-all shadow-sm hover:shadow-md"
+                          title="Delete Draft"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-neutral-500">Status</p>
-                      <p className="font-medium">Draft</p>
+                    
+                    {/* Metrics/Status Row */}
+                    <div className="mt-auto grid grid-cols-2 sm:grid-cols-3 gap-4 py-3 border-t border-neutral-50">
+                      <div>
+                        <p className="text-[10px] uppercase text-neutral-400 font-bold mb-1">Category</p>
+                        <p className="text-sm font-semibold text-neutral-700">{event.category || "General"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase text-neutral-400 font-bold mb-1">Last Updated</p>
+                        <p className="text-sm font-semibold text-neutral-700">
+                          {new Date(event.createdAt || Date.now()).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                      <div className="hidden sm:block">
+                        <p className="text-[10px] uppercase text-neutral-400 font-bold mb-1">Completeness</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-grow h-1.5 bg-neutral-100 rounded-full overflow-hidden max-w-[100px]">
+                             <div className="h-full bg-amber-400 w-2/3 rounded-full"></div>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-600">Draft Status</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Mobile-only Action Buttons */}
+                    <div className="mt-4 flex md:hidden items-center gap-2">
+                      <Link
+                        href={`/dashboards/organizer/events/${event.id}/edit`}
+                        className="flex-1 bg-white border border-neutral-200 text-neutral-700 py-2 rounded-lg text-center text-sm font-bold shadow-sm"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handlePublish(event.id)}
+                        className="flex-1 bg-primary text-white py-2 rounded-lg text-center text-sm font-bold shadow-sm"
+                      >
+                        Publish
+                      </button>
                     </div>
                   </div>
                 </div>

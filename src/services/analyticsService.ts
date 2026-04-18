@@ -241,13 +241,21 @@ async function fetchOrganizerAnalytics(userId: string): Promise<OrganizerAnalyti
       const ticketsSold = event.tickets_sold || 0;
       const revenue = event.revenue || 0;
 
+      // Calculate total capacity from tickets if available, otherwise fallback to event.capacity or 0
+      let totalCapacity = 0;
+      if (event.tickets && Array.isArray(event.tickets) && event.tickets.length > 0) {
+        totalCapacity = event.tickets.reduce((sum: number, ticket: any) => sum + (ticket.quantity || 0), 0);
+      } else {
+        totalCapacity = event.capacity || 0;
+      }
+
       const eventMetric: EventMetrics = {
         id: event.id,
         title: event.title,
         date: eventDate.toLocaleDateString(),
         location: buildEventLocation(event),
         ticketsSold,
-        totalCapacity: event.capacity || 100,
+        totalCapacity: totalCapacity || 100, // Final fallback only if everything is 0
         revenue,
         imageUrl: event.image_url
       };

@@ -47,7 +47,6 @@ import { useDurationCalculator } from '@/hooks/useDurationCalculator';
 import { LocationPicker } from '@/components/LocationPicker';
 import { ImageCropModal } from '@/components/ImageCropModal';
 import { 
-  checkDuplicateEventTitle,
   validateCityName,
   getCityValidationError,
   validateOnlineUrl,
@@ -63,11 +62,7 @@ import {
 const eventFormSchema = z.object({
   // Basic Details
   title: z.string().min(5, "Event title is required (minimum 5 characters)")
-    .max(100, "Event title cannot exceed 100 characters")
-    .refine(async (title) => {
-      const isDuplicate = await checkDuplicateEventTitle(title);
-      return !isDuplicate;
-    }, "An event with this title already exists. Please choose a different title."),
+    .max(100, "Event title cannot exceed 100 characters"),
   description: z.string().min(20, "Event description is required (minimum 20 characters)"),
   category: z.string().min(1, "Category is required"),
   
@@ -420,6 +415,7 @@ function DurationDisplayField({ watch }: { watch: any }) {
 export default function CreateEventPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPrevalidating, setIsPrevalidating] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
@@ -3415,6 +3411,15 @@ export default function CreateEventPage() {
                   type="button"
                   onClick={async () => {
                     debugEventCreation('[CreateEvent] create clicked in edit mode');
+                    setIsPrevalidating(true);
+                    
+                    // ✅ PROACTIVE SESSION REFRESH: Before validation starts
+                    try {
+                      await keepSessionAlive();
+                    } catch (e) {
+                      console.warn('[CreateEvent] Session keep-alive failed, but proceeding anyway');
+                    }
+
                     // Validate first, then let onSubmit control submitting state.
                     setTimeout(() => {
                       handleSubmitWithValidation(async () => {
@@ -3424,22 +3429,27 @@ export default function CreateEventPage() {
                           await onSubmit(data, false);
                         })().catch((e) => {
                           debugEventCreation('[CreateEvent] schema validation failed during event submit', e);
+                        }).finally(() => {
+                          setIsPrevalidating(false);
                         });
                       }, () => {
                         // No-op: loading state is now managed only inside onSubmit.
+                        setIsPrevalidating(false);
                       });
                     }, 0);
                   }}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isPrevalidating}
                   className={`w-full sm:w-auto px-6 py-2 rounded-md font-medium flex items-center justify-center gap-2 transition-all duration-200 ${
-                    isSubmitting
+                    (isSubmitting || isPrevalidating)
                       ? "bg-neutral-300 text-neutral-500 cursor-not-allowed"
                       : "bg-primary text-white hover:bg-primary-dark hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                   }`}
                 >
-                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {(isSubmitting || isPrevalidating) && <Loader2 className="w-4 h-4 animate-spin" />}
                   {isSubmitting 
                     ? "Creating..." 
+                    : isPrevalidating
+                    ? "Validating..."
                     : (watch("status") === "draft" ? "Create Draft" : "Create Event")}
                 </button>
               )}
