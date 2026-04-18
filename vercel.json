@@ -1,5 +1,5 @@
 {
-  "ignoreBuildCommand": "node -e \"process.exit(['main', 'preview'].includes(process.env.VERCEL_GIT_COMMIT_REF) ? 1 : 0)\"",
+  "ignoreCommand": "node -e \"process.exit(['main', 'preview'].includes(process.env.VERCEL_GIT_COMMIT_REF) ? 1 : 0)\"",
   "github": {
     "silent": true
   }
